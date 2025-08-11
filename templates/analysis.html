@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Analysis Results - CrackResume</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="/">
+                <i class="fas fa-file-alt me-2"></i>CrackResume
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-plus me-1"></i>Analyze New Resume
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-file-alt text-primary me-2"></i>
+                    <h2 class="mb-0">{{ analysis.filename }}</h2>
+                </div>
+                <p class="text-muted mb-0">
+                    <i class="fas fa-briefcase me-1"></i>{{ analysis.job_position }} • 
+                    <i class="fas fa-calendar me-1"></i>{{ analysis.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Score Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="score-circle mx-auto mb-3" style="width: 120px; height: 120px;">
+                            <canvas id="atsScoreChart"></canvas>
+                            <div class="score-text">
+                                <span class="score-number">{{ analysis.ats_score }}</span>
+                                <span class="score-label">ATS Score</span>
+                            </div>
+                        </div>
+                        <h5 class="card-title">ATS Compatibility</h5>
+                        <p class="text-muted mb-0">
+                            {% if analysis.ats_score >= 80 %}
+                                <span class="badge bg-success">Excellent</span> Your resume is highly ATS-friendly
+                            {% elif analysis.ats_score >= 60 %}
+                                <span class="badge bg-warning">Good</span> Some improvements recommended
+                            {% else %}
+                                <span class="badge bg-danger">Needs Work</span> Significant optimization required
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="score-circle mx-auto mb-3" style="width: 120px; height: 120px;">
+                            <canvas id="probabilityChart"></canvas>
+                            <div class="score-text">
+                                <span class="score-number">{{ (analysis.selection_probability * 100)|round|int }}%</span>
+                                <span class="score-label">Match</span>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Selection Probability</h5>
+                        <p class="text-muted mb-0">
+                            {% if analysis.selection_probability >= 0.7 %}
+                                <span class="badge bg-success">High</span> Strong candidate profile
+                            {% elif analysis.selection_probability >= 0.4 %}
+                                <span class="badge bg-warning">Moderate</span> Competitive potential
+                            {% else %}
+                                <span class="badge bg-danger">Low</span> Needs enhancement
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Improvement Suggestions -->
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>Improvement Suggestions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if suggestions %}
+                            <div class="suggestions-list">
+                                {% for suggestion in suggestions %}
+                                <div class="suggestion-item d-flex align-items-start mb-3">
+                                    <div class="suggestion-icon me-3">
+                                        <i class="fas fa-arrow-right text-primary"></i>
+                                    </div>
+                                    <div class="suggestion-content">
+                                        <p class="mb-0">{{ suggestion }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted mb-0">No specific suggestions available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-target me-2"></i>Focus Areas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if focus_areas %}
+                            <div class="focus-areas-list">
+                                {% for area in focus_areas %}
+                                <div class="focus-area-item mb-2">
+                                    <span class="badge bg-warning text-dark me-2">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </span>
+                                    {{ area }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted mb-0">No specific focus areas identified.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Feedback -->
+        <div class="row">
+            <div class="col">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments me-2"></i>Detailed Feedback
+                            </h5>
+                            <button class="btn btn-outline-primary btn-sm" id="loadDetailedFeedback">
+                                <i class="fas fa-refresh me-1"></i>Get Detailed Analysis
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="detailedFeedbackContent">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle mb-2" style="font-size: 2rem;"></i>
+                            <p>Click "Get Detailed Analysis" for comprehensive feedback and recommendations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back to Upload -->
+        <div class="row mt-4">
+            <div class="col text-center">
+                <a href="/" class="btn btn-outline-primary">
+                    <i class="fas fa-plus me-2"></i>Analyze Another Resume
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 class="mb-2">Generating Detailed Feedback</h5>
+                    <p class="text-muted mb-0">Please wait while we prepare comprehensive analysis...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            // ATS Score Chart
+            const atsCtx = document.getElementById('atsScoreChart').getContext('2d');
+            new Chart(atsCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [{{ analysis.ats_score }}, {{ 100 - analysis.ats_score }}],
+                        backgroundColor: ['#057642', '#E5E5E5'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '75%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+
+            // Selection Probability Chart
+            const probCtx = document.getElementById('probabilityChart').getContext('2d');
+            const probability = {{ (analysis.selection_probability * 100)|round|int }};
+            new Chart(probCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [probability, 100 - probability],
+                        backgroundColor: ['#0073B1', '#E5E5E5'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '75%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+        });
+
+        // Detailed Feedback Loading
+        document.getElementById('loadDetailedFeedback').addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            modal.show();
+
+            fetch(`/api/detailed-feedback/{{ analysis.id }}`)
+                .then(response => response.json())
+                .then(data => {
+                    modal.hide();
+                    const content = document.getElementById('detailedFeedbackContent');
+                    
+                    if (data.success) {
+                        content.innerHTML = `
+                            <div class="detailed-feedback">
+                                <div class="feedback-text">${data.feedback.replace(/\n/g, '<br>')}</div>
+                            </div>
+                        `;
+                    } else {
+                        content.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Failed to load detailed feedback: ${data.error}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    modal.hide();
+                    const content = document.getElementById('detailedFeedbackContent');
+                    content.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            An error occurred while loading detailed feedback.
+                        </div>
+                    `;
+                });
+        });
+    </script>
+</body>
+</html>
